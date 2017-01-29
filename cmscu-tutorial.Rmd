@@ -1,20 +1,18 @@
 ---
 title: "Building Huge *n*-gram Frequency Dictionaries Efficiently in R"
 author: "David W. Vinson"
-date: "12/3/2016"
+date: "01/28/2017"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```
 
-"**[Let me be clear](https://www.youtube.com/watch?v=5oNcHS0c5W8)**", I'm going to show you how to build massive [*n*-gram](https://en.wikipedia.org/wiki/N-gram) frequency dictionaries efficently, query them efficiently, and save them to binary files efficiently using the **R** package [**cmscu**](https://github.com/jasonkdavis/r-cmscu). 
+"**[Let me be clear](https://www.youtube.com/watch?v=5oNcHS0c5W8)**", I'm going to show you how to build massive [*n*-gram](https://en.wikipedia.org/wiki/N-gram) frequency dictionaries efficently, query them efficiently, and save them to binary files efficiently using the **R** package **cmscu**. 
 
 **C.M.S.C.U.** stands for [*Count-min sketch*](https://en.wikipedia.org/wiki/Count%E2%80%93min_sketch)
  with *conservative updating*. My interest is in applying this technique to language data. There are lots of interesting underlying details (I'll show you some below), but let’s just see it in action. Sound cool?
- 
-
 
 We developed this package as a replacement to the *DocumentTermMatrix* (**dtm**) function in **R**'s [tm](ftp://cran.r-project.org/pub/R/web/packages/tm/vignettes/tm.pdf) package for $n$-grams. [$n$-grams](https://en.wikipedia.org/wiki/N-gram) are a simple and elegant way to model the frequency of language data by *counting* the instances of words' occurences within a corpus. Even simple models like this can be computationally expensive when trying to model larger  $n$-grams (e.g., $3$- and $4$-grams) and corpora - such as [Amazon reviews](http://jmcauley.ucsd.edu/data/amazon/), [Yelp reviews](https://www.yelp.com/dataset_challenge), [Twitter posts](https://dev.twitter.com/streaming/firehose) and [H. R. Clinton's emails](https://wikileaks.org/clinton-emails/).  We don't need all the funcionality that comes with the **dtm** when we only want $n$-grams. In fact, using the **dtm** with huge datasets over larger $n$-grams is impossible. Sorry. It can't be done. We solves some computational bottlenecks  when we use **cmscu** (*detailed below*). 
 
@@ -22,14 +20,24 @@ If you want to learn more about how this work can be used to implement sophistic
 
     Vinson, D. W., Davis, J. K., Sindi, S. S., & Dale, R. (2016). Efficient n-gram analysis in R with cmscu. Behavior Research Methods. 48(3), 909-922. doi: 10.3758/s13428-016-0766-5
 
+####Install dependencies
+There are a few dependencies required to install **cmscu** depending on your operating system. **cmscu** was built under **R 3.1**, so first you'll need to install the latest version of **R**, [here](https://cran.r-project.org/). **cmscu**'s implementation was written in **C++**. To link this code to **R** requires a **C++** development environment. This is super easy but different for different operating systems.
+
+  + For **Windows users** you will need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/). Since you've now downloaded the latest version of **R**, simply download and install the most recent Rtools executable.  
+  + For **Mac users** you should check whether you have **xcode** (a C++ development environment). To do this, go to your command line and type this in: *xcode-select --install*. If you don't have it, it will install it for you. Then open **R**
+  
+After you're downloaded and installed the above, restart **R**.  **cmscu** was recently submitted to CRAN, but for now you can download it [here](https://github.com/DaveVinson/cmscu-tutorial/raw/master/cmscu.tar.gz). Once downloaded, install it by following the instruction below!
 
 ####Install & Load cmscu
-```{r install}
+```{r install, results="hide"}
+#first, install Rcpp. This connects C++ code to your R environment 
+install.packages('Rcpp',repos = "http://cran.stat.ucla.edu/")
+#set your working directory 
 setwd('~/Desktop')
-# For now you can find it here: github.com/jasonkdavis/r-cmscu
-# install.packages('cmscu.tar.gz')
-# if you run into compiler issues for Mac OS 10, use this: 
-# install.packages("http://www.jasonkarldavis.com/random/cmscu_1.0.tgz", repos=NULL, type="mac.binary")
+#make sure you're in the right folder
+getwd()
+#install cmscu
+install.packages('cmscu.tar.gz', repos = NULL, type = "src")
 require(cmscu)
 ```
 
@@ -115,15 +123,17 @@ ngrams <- function(lst, n) {
 ```
 
 Oh and you'll need this library too!
-```{r load, rjson}
+```{r load rjson, results="hide"}
 # you'll need this to parse yelp reviews
+install.packages("rjson", repos = "http://cran.stat.ucla.edu/")
 require(rjson)
 ```
 
 ### The main loop 
 Loop through reviews and populate dictionaries (a.k.a. train the model). (*I also provide comments for how to test your code without looping through the entire dataset.*)
 
-**Note**: I'm using a smaller dataset that can be found on my [github page here](https://github.com/DaveVinson/cmscu-tutorial/). 
+**Note**: I'm using a smaller dataset that can be found on my [github page here](https://github.com/DaveVinson/cmscu-tutorial/). If you download it, be sure to unzip it before running the code below.
+
 ```{r load, run clean etc}
 # connect to the file, but don't load the contents! 
 Yelpfile <- file('yelp_academic_dataset_review.json', 'r', FALSE); 
@@ -208,7 +218,7 @@ These diagnostics provide a measure of how well you've captured the fequency dic
 Finally, we can now save the dictionaries to binary files. The size of your binary file will always equal the size of the table x hash functions you've specified above. In our case ~$1$ Gigabyte. That may seem big for some $n$-grams and not big enough for others, but as we now know, your computer can handle the sizes that you specify. In addition, what good is a $n$-gram corpus you *can't* query due to memory overload?
 
 *Note: Keep your cleaning functions the same so you don't accidently query your table and come up empty handed. For instance if you STORE in UPPERCASE but query in lowercase, [you're gonna have a bad time](https://www.youtube.com/watch?v=8yU0TP3B6G8).*
-```{r save}
+```{r save,  results="hide"}
 # save your dictionary to in .bin
 yelp_1g$save("yelp1.bin")
 ```
@@ -216,11 +226,14 @@ yelp_1g$save("yelp1.bin")
 The next step is to load it back in (which takes almost no time at all)
 
 ###Load from .bin and Query!
-```{r reload Tables}
+```{r reload Tables,  results="hide"}
 # make sure your dictionary is the same size! 
 frombinary_1g <- new(FrequencyDictionary, 4, 2^26)
 # load it in
 frombinary_1g$read("yelp1.bin") 
+```
+
+```{r query new}
 # query to test
 frombinary_1g$query(c("SEE","PIZZA","JUXTAPOSED"))
 yelp_2g$query(c("<BOS> I","THE PIZZA","SHE JUXTAPOSED"))
