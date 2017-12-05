@@ -26,8 +26,8 @@ There are a few dependencies required to install **cmscu** depending on your ope
   + For **Windows users** you will need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/). Since you've now downloaded the latest version of **R**, simply download and install the most recent Rtools executable.  
   + For **Mac users** you should check whether you have **xcode** (a C++ development environment). To do this, go to your command line and type this in: *xcode-select --install*. If you don't have it, it will install it for you. Then open **R**
   
-After you're downloaded and installed the above, restart **R**.  **cmscu** was recently submitted to CRAN, but for now you can download it [here](https://github.com/DaveVinson/cmscu-tutorial/raw/master/cmscu.tar.gz). Once downloaded, install it by following the instruction below!
-
+After you're downloaded and installed the above, restart **R**.  **cmscu** was recently submitted to CRAN, but for now you can download it [here](https://github.com/DaveVinson/cmscu-tutorial/raw/master/cmscu.tar.gz). Once downloaded, install it by following the instruction below!  
+  
 ####Install & Load cmscu
 ```{r install, results="hide"}
 #first, install Rcpp. This connects C++ code to your R environment 
@@ -40,7 +40,8 @@ getwd()
 install.packages('cmscu.tar.gz', repos = NULL, type = "src")
 require(cmscu)
 ```
-
+ 
+ 
 ####Build Frequency Dictionaries
 ```{r tables}
 # unigrams
